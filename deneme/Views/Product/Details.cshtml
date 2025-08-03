@@ -1,0 +1,99 @@
+﻿@model deneme.Models.Product  
+@{  
+    ViewData["Title"] = Model?.Name ?? "Ürün Detayı";  
+    Layout = "_Layout";  
+}  
+
+@if (Model == null)  
+{  
+    <h3 class="text-danger text-center my-5">Ürün verisi gelmedi.</h3>  
+    return;  
+}  
+<div class="container my-5">  
+    <div class="row">  
+        <div class="col-md-5">  
+            <img src="@Model.ImageUrl" class="img-fluid rounded shadow" alt="@Model.Name" />  
+        </div>  
+
+        <div class="col-md-7">  
+            <h2 class="fw-bold mb-2">@Model.Name</h2>  
+            <p class="text-muted mb-1">@Model.Category</p>  
+
+            <h4 class="text-danger fw-bold">  
+                @Model.Price.ToString("C", new System.Globalization.CultureInfo("tr-TR"))  
+            </h4>  
+
+            @if (Model.OldPrice.HasValue)  
+            {  
+                <p class="text-muted text-decoration-line-through">  
+                    @Model.OldPrice.Value.ToString("C", new System.Globalization.CultureInfo("tr-TR"))  
+                </p>  
+            }  
+
+            <p class="mb-3">  
+                ⭐ @Model.Rating / 5 &nbsp;–&nbsp; (@Model.ReviewCount yorum)  
+            </p>  
+
+            <button class="btn btn-primary btn-lg">  
+                <i class="fas fa-shopping-cart me-1"></i> Sepete Ekle  
+            </button>  
+        </div>  
+    </div>  
+</div>  
+
+<!-- ---------- 🧠 Gemini Chatbot ---------- -->  
+<div class="border rounded p-3 mt-5">  
+    <h5>Ürün Asistanı</h5>  
+    <div id="log" class="bg-light border p-2 mb-2" style="max-height:220px;overflow:auto;font-size:.9rem;"></div>  
+    <div class="input-group">  
+        <input id="askTxt" class="form-control" placeholder="Sorunuzu yazın…" />  
+        <button class="btn btn-success" onclick="send()">Sor</button>  
+    </div>  
+</div>  
+
+@section Scripts {  
+<script>  
+/* JS dosyası yüklendi mi? */  
+console.log("JS Yüklendi");  
+
+function logLine(html){  
+    const l=document.getElementById('log');  
+    l.insertAdjacentHTML('beforeend',html+"<br>");  
+    l.scrollTop=l.scrollHeight;  
+}  
+
+async function send(){  
+    console.log("click");  // ► Adım-3 kontrolü  
+    const inp=document.getElementById('askTxt');  
+    const q  = inp.value.trim();  
+    if(!q) return;  
+
+    logLine("<strong>👤</strong>: "+q);  
+    inp.value="";  
+
+    try{  
+        logLine("<em style='color:gray'>↗ fetch /Product/AskGemini</em>");  
+        const res=await fetch('/Product/AskGemini',{  
+            method:'POST',  
+            headers:{'Content-Type':'application/json'},  
+            body:JSON.stringify({ productId:@Model.Id, question:q })  
+        });  
+
+        /* Response kodu logla */  
+        console.log("status",res.status);  
+
+        if(!res.ok){  
+            const t=await res.text();  
+            logLine(`<span style='color:red'>⚠️ ${res.status} : ${t}</span>`);  
+            return;  
+        }  
+
+        const ans=await res.text();  
+        logLine("<strong>🤖</strong>: "+ans);  
+    }  
+    catch(e){  
+        logLine("<span style='color:red'>⚠️ JS Exception: "+e+"</span>");  
+    }  
+}  
+</script>  
+}
