@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace deneme.Models
 {
@@ -6,15 +7,16 @@ namespace deneme.Models
     {
         public int Id { get; set; }
 
-        [Required]
-        [StringLength(200)]
+        [Required, StringLength(200)]
         public string Name { get; set; } = string.Empty;
+
+        [Required, StringLength(200)]
+        public string Colour { get; set; } = string.Empty;
 
         [StringLength(1000)]
         public string Description { get; set; } = string.Empty;
 
-        [Required]
-        [Range(0, double.MaxValue)]
+        [Required, Range(0, double.MaxValue)]
         public decimal Price { get; set; }
 
         public decimal? OldPrice { get; set; }
@@ -31,11 +33,14 @@ namespace deneme.Models
         public int ReviewCount { get; set; }
 
         [Range(0, 100)]
-        public int DiscountPercentage { get; set; } 
+        public int DiscountPercentage { get; set; }
 
         public bool IsFlashSale { get; set; }
         public bool IsPopular { get; set; }
         public DateTime CreatedDate { get; set; }
-    }
 
+        [NotMapped]
+        public string SearchableText =>
+            $"{Name} {Colour} {Category} {Price} {Description}";
+    }
 }

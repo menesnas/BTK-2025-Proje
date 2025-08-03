@@ -48,9 +48,15 @@
                     <!-- Search Bar -->
                     <div class="col-lg-6 col-md-5">
                         <div class="search-container position-relative">
-                            <input type="text" class="form-control form-control-lg border-0 bg-light rounded-pill ps-4 pe-5"
+                            <input id="searchInput"
+                                   type="text"
+                                   class="form-control form-control-lg border-0 bg-light rounded-pill ps-4 pe-5"
                                    placeholder="Aradığınız ürünü yazın...">
-                            <button class="btn btn-primary position-absolute end-0 top-0 bottom-0 rounded-pill px-3">
+
+
+                            <button id="searchBtn"
+                                    class="btn btn-primary position-absolute end-0 top-0 bottom-0 rounded-pill px-3">
+
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
@@ -108,8 +114,8 @@
         </nav>
     </header>
 
-    <!-- Main Content -->
-    <main role="main" class="main-content">
+    <!-- Main Content -->+
+    <main id="mainContent" role="main" class="main-content">
         @RenderBody()
     </main>
 
@@ -347,5 +353,55 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/ai-assistant.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
-</body>
+    <script>
+        async function doSearch() {
+          const q = document.getElementById("searchInput").value.trim();
+          if (!q) return;
+
+          // fetch from your API
+          const res = await fetch(`/api/search?query=${encodeURIComponent(q)}`);
+          const products = await res.json();
+
+          // hide the default Index content
+          const def = document.getElementById("defaultContent");
+          if (def) def.style.display = "none";
+
+          // build a results container
+          const main = document.getElementById("mainContent");
+          main.innerHTML = `
+            <div class="container my-4">
+              <h2 class="mb-3">Arama Sonuçları (${products.length})</h2>
+              <div class="row" id="resultsRow"></div>
+            </div>`;
+
+          const row = document.getElementById("resultsRow");
+          products.forEach(p => {
+            row.insertAdjacentHTML("beforeend", `
+              <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                  <img src="${p.imageUrl}" class="card-img-top" alt="${p.name}">
+                  <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">${p.name}</h5>
+                    <p class="card-text flex-grow-1">${p.description}</p>
+                    <div>
+                      ${p.oldPrice
+                        ? `<span class="text-muted text-decoration-line-through me-2">${p.oldPrice.toFixed(2)}₺</span>`
+                        : ""}
+                      <span class="fw-bold">${p.price.toFixed(2)}₺</span>
+                    </div>
+                  </div>
+                </div>
+              </div>`);
+          });
+        }
+
+        document.getElementById("searchBtn")
+                .addEventListener("click", doSearch);
+        document.getElementById("searchInput")
+                .addEventListener("keypress", e => {
+                  if (e.key === "Enter") doSearch();
+                });
+    </script>
+
+    </body>
 </html>

@@ -1,6 +1,8 @@
 ﻿using deneme.Data;
 using deneme.Services; // GeminiService için
 using Microsoft.EntityFrameworkCore;
+using Pinecone;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +17,22 @@ builder.Services.AddControllersWithViews();
 var apiKey = builder.Configuration["GeminiApiKey"];
 builder.Services.AddSingleton(new GeminiService(apiKey));
 
+// 3) API Controllers + JSON settings
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    );
+// 4) your embedding HTTP client
+builder.Services.AddHttpClient<EmbeddingService>();
 
+// 5) Pinecone client
+builder.Services.AddSingleton(sp =>
+    new PineconeClient(builder.Configuration["Pinecone:ApiKey"]!)
+);
+
+// 6) your indexing service
+builder.Services.AddScoped<IndexingService>();
 // ► Uygulama oluşturuluyor
 var app = builder.Build();
 
@@ -25,6 +42,13 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();           // otomatik migrate
     SeedData.Initialize(db);         // varsa seed data
+}
+
+// 8) Push to Pinecone
+using (var scope = app.Services.CreateScope())
+{
+    var indexer = scope.ServiceProvider.GetRequiredService<IndexingService>();
+    await indexer.UpsertAllProductsAsync();
 }
 
 // ► Pipeline

@@ -1,10 +1,9 @@
 ﻿using deneme.Data;     // ApplicationDbContext
 using deneme.Models;
-using deneme.Data;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
-namespace BTK_Hackatlon_Project.Controllers
+namespace deneme.Controllers
 {
     public class HomeController : Controller
     {
