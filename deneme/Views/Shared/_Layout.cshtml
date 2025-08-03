@@ -354,54 +354,55 @@
     <script src="~/js/ai-assistant.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
     <script>
-        async function doSearch() {
-          const q = document.getElementById("searchInput").value.trim();
-          if (!q) return;
+        window.addEventListener("DOMContentLoaded", () => {
+            const btn = document.getElementById("searchBtn");
+            const input = document.getElementById("searchInput");
 
-          // fetch from your API
-          const res = await fetch(`/api/search?query=${encodeURIComponent(q)}`);
-          const products = await res.json();
+            async function doSearch() {
+                const q = input.value.trim();
+                if (!q) return;
 
-          // hide the default Index content
-          const def = document.getElementById("defaultContent");
-          if (def) def.style.display = "none";
+                const res = await fetch(`/api/search?query=${encodeURIComponent(q)}`);
+                const products = await res.json();
 
-          // build a results container
-          const main = document.getElementById("mainContent");
-          main.innerHTML = `
-            <div class="container my-4">
-              <h2 class="mb-3">Arama Sonuçları (${products.length})</h2>
-              <div class="row" id="resultsRow"></div>
-            </div>`;
+                const def = document.getElementById("defaultContent");
+                if (def) def.style.display = "none";
 
-          const row = document.getElementById("resultsRow");
-          products.forEach(p => {
-            row.insertAdjacentHTML("beforeend", `
-              <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                  <img src="${p.imageUrl}" class="card-img-top" alt="${p.name}">
-                  <div class="card-body d-flex flex-column">
-                    <h5 class="card-title">${p.name}</h5>
-                    <p class="card-text flex-grow-1">${p.description}</p>
-                    <div>
-                      ${p.oldPrice
-                        ? `<span class="text-muted text-decoration-line-through me-2">${p.oldPrice.toFixed(2)}₺</span>`
-                        : ""}
-                      <span class="fw-bold">${p.price.toFixed(2)}₺</span>
-                    </div>
-                  </div>
+                const main = document.getElementById("mainContent");
+                main.innerHTML = `
+                    <div class="container my-4">
+                      <h2 class="mb-3">Arama Sonuçları (${products.length})</h2>
+                      <div class="row" id="resultsRow"></div>
+                    </div>`;
+
+                const row = document.getElementById("resultsRow");
+                products.forEach(p => {
+                       row.insertAdjacentHTML("beforeend", `
+        <div class="col-md-4 mb-4">
+          <a href="/Product/Details/${p.id}" class="text-decoration-none text-dark">
+            <div class="card h-100 shadow-sm">
+              <img src="${p.imageUrl}" class="card-img-top" alt="${p.name}">
+              <div class="card-body d-flex flex-column">
+                <h5 class="card-title">${p.name}</h5>
+                <p class="card-text flex-grow-1">${p.description}</p>
+                <div>
+                  ${p.oldPrice ? `<span class="text-muted text-decoration-line-through me-2">${p.oldPrice.toFixed(2)}₺</span>` : ""}
+                  <span class="fw-bold">${p.price.toFixed(2)}₺</span>
                 </div>
-              </div>`);
-          });
-        }
-
-        document.getElementById("searchBtn")
-                .addEventListener("click", doSearch);
-        document.getElementById("searchInput")
-                .addEventListener("keypress", e => {
-                  if (e.key === "Enter") doSearch();
+              </div>
+            </div>
+          </a>
+        </div>`);
                 });
+            }
+
+            if (btn) btn.addEventListener("click", doSearch);
+            if (input) input.addEventListener("keypress", e => {
+                if (e.key === "Enter") doSearch();
+            });
+        });
     </script>
+
 
     </body>
 </html>
