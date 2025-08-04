@@ -109,6 +109,50 @@
             </div>
         </section>
 
+   
     </div>
 
 </div>
+
+
+<!-- Sağ altta AI widget butonu -->
+<div id="aiFloatToggleBtn" class="ai-assistant-float" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999;">
+    <button class="btn btn-primary rounded-circle" style="width:60px; height:60px; font-size:2rem;">
+        <i class="fas fa-robot"></i>
+    </button>
+</div>
+
+<!-- Açılır AI paneli -->
+<div id="aiChatPopup" class="ai-assistant-float" style="display:none; position: fixed; bottom: 100px; right: 24px; width: 350px; z-index: 10000;">
+    <div class="card shadow-lg">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-robot me-2"></i>AI Kombin Asistanı</span>
+            <button id="aiFloatCloseBtn" class="btn btn-sm btn-light">&times;</button>
+        </div>
+        <div class="card-body">
+            <form id="popupOutfitForm">
+                <div class="mb-3">
+                    <input type="file" id="popupClothingImage" accept="image/*" class="form-control" required>
+                    <div id="popupImagePreview" class="mt-2 d-none">
+                        <img id="popupPreviewImg" src="" alt="Önizleme" class="img-thumbnail" style="max-width: 120px;">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Durum:</label><br>
+                    <input type="radio" name="popupOccasion" value="Günlük" checked> Günlük
+                    <input type="radio" name="popupOccasion" value="İş"> İş
+                    <input type="radio" name="popupOccasion" value="Parti"> Parti
+                    <input type="radio" name="popupOccasion" value="Spor"> Spor
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Kombin Öner</button>
+                <div id="popupLoadingState" class="d-none mt-2 text-center">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="popupSuggestionResult" class="d-none mt-3">
+                    <div id="popupSuggestionContent"></div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

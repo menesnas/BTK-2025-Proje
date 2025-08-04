@@ -13,6 +13,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(opt =>
 // ► MVC desteği
 builder.Services.AddControllersWithViews();
 
+// AI servisini ekle
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IAIService, GeminiAIService>();
+
 // ✅ GeminiService’i appsettings.json'dan API key alarak DI Container'a ekle
 var apiKey = builder.Configuration["GeminiApiKey"];
 builder.Services.AddSingleton(new GeminiService(apiKey));
@@ -33,6 +37,17 @@ builder.Services.AddSingleton(sp =>
 
 // 6) your indexing service
 builder.Services.AddScoped<IndexingService>();
+
+// Add services to the container.
+builder.Services.AddRazorPages();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        // CamelCase policy'yi kaldırdık - PascalCase kullanacağız
+    }); // Web API Controller'lar için
+
+
 // ► Uygulama oluşturuluyor
 var app = builder.Build();
 
