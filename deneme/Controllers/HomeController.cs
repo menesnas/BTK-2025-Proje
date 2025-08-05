@@ -21,7 +21,7 @@ namespace deneme.Controllers
         {
             var viewModel = new HomeViewModel
             {
-                Categories = _context.Categories.ToList(),
+                //
                 FlashSaleProducts = _context.Products.Where(p => p.IsFlashSale).ToList(),
                 PopularProducts = _context.Products.Where(p => p.IsPopular).ToList()
             };

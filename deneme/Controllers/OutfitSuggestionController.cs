@@ -216,7 +216,7 @@ namespace deneme.Controllers
                 suggestion.Occasion,
                 products = matchingProducts
             };
-            
+            Console.WriteLine("\n\nGeminiresponse: " + response);
             Console.WriteLine($"Frontend'e gönderilen yanıt: {System.Text.Json.JsonSerializer.Serialize(response)}");
             return Ok(response);
         }
@@ -250,8 +250,7 @@ namespace deneme.Controllers
                 return Task.FromResult("ceket");
             }
 
-            // Dosya boyutuna göre tahmin (çok basit)
-            if (fileSize > 500000) // 500KB'dan büyükse
+            if (fileSize < 1000000) 
             {
                 return Task.FromResult("üst giyim (detaylı)");
             }
@@ -265,6 +264,13 @@ namespace deneme.Controllers
         {
             // Her kategori için ayrı arama stratejileri
             var tasks = new List<Task<(string category, List<Product> products)>>();
+
+            // Üst giyim araması
+            if (!string.IsNullOrEmpty(suggestion.UstGiyim))
+            {
+                tasks.Add(SearchProductsWithCategory("ustGiyim", suggestion.UstGiyim, 
+                    new[] { "gömlek", "tisort", "ceket", "kazak"}));
+            }
 
             // Alt giyim araması
             if (!string.IsNullOrEmpty(suggestion.AltGiyim))
@@ -302,8 +308,13 @@ namespace deneme.Controllers
                     DetailUrl = $"/Product/Details/{p.Id}",
                     Similarity = CalculateSimilarity(category == "altGiyim" ? suggestion.AltGiyim : 
                                                    category == "ayakkabi" ? suggestion.Ayakkabi : 
+                                                   category == "ustGiyim" ? suggestion.UstGiyim :
+                                                   category == "aksesuar" ? suggestion.Aksesuar :
                                                    suggestion.Aksesuar, p.Name)
-                }).OrderByDescending(x => x.Similarity).ToArray();
+                })
+                .Where(x => x.Similarity > 0.6) // Sadece 0.6'dan büyük benzerlik oranına sahip ürünleri filtrele
+                .OrderByDescending(x => x.Similarity)
+                .ToArray();
             }
 
             return response;
