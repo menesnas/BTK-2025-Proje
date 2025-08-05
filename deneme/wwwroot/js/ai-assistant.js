@@ -604,6 +604,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Güvenli property erişimi
                 const style = result.Style || result.style || 'Kombin';
+                const ustGiyim = result.UstGiyim || result.ustGiyim || 'Üst giyim';
                 const altGiyim = result.AltGiyim || result.altGiyim || 'Alt giyim';
                 const ayakkabi = result.Ayakkabi || result.ayakkabi || 'Ayakkabı';
                 const aksesuar = result.Aksesuar || result.aksesuar || 'Aksesuar';
@@ -614,9 +615,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h6 class="fw-bold text-primary mb-2">${style} Kombini</h6>
                         <div class="row g-2 text-center">
                             <div class="col-12">
+<<<<<<< HEAD
                                 <small class="text-muted d-block cursor-pointer" ">👔 ${altGiyim}</small>
                                 <small class="text-muted d-block cursor-pointer" ', '')">👟 ${ayakkabi}</small>
                                 <small class="text-muted d-block cursor-pointer" ')">👜 ${aksesuar}</small>
+=======
+                                <small class="text-muted d-block cursor-pointer" "> ${ustGiyim}</small>
+                                <small class="text-muted d-block cursor-pointer" "> ${altGiyim}</small>
+                                <small class="text-muted d-block cursor-pointer" "> ${ayakkabi}</small>
+                                <small class="text-muted d-block cursor-pointer" "> ${aksesuar}</small>
+>>>>>>> temp-branch
                             </div>
                         </div>
                         <button class="btn btn-sm btn-primary mt-2 w-100" onclick="openOutfitSuggestion()">

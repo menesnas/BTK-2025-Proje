@@ -11,23 +11,7 @@
 
     <div class="container">
 
-        <!-- ──────────── KATEGORİLER ──────────── -->
-        <section class="category-section mb-5">
-            <h2 class="section-title fw-bold mb-4">Kategoriler</h2>
-            <div class="row g-3">
-                @foreach (var category in Model.Categories)
-                {
-                    <div class="col-lg-2 col-md-4 col-6">
-                        <div class="category-card text-center p-4 border rounded-3 h-100 hover-lift">
-                            <div class="category-icon mb-3">
-                                <i class="@category.Icon @category.Color" style="font-size:2.5rem;"></i>
-                            </div>
-                            <h6 class="fw-semibold mb-0">@category.Name</h6>
-                        </div>
-                    </div>
-                }
-            </div>
-        </section>
+        
 
         <!-- ──────────── FLAŞ İNDİRİMLER ──────────── -->
         <section class="flash-sales mb-5">

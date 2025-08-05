@@ -52,11 +52,7 @@ namespace deneme.Services
             }
 
             promptBuilder.AppendLine("\nÖnemli: Önerdiğin ürünler aşağıdaki kategorilerden olmalıdır:");
-            promptBuilder.AppendLine("- Kadın Giyim");
-            promptBuilder.AppendLine("- Erkek Giyim");
-            promptBuilder.AppendLine("- Çocuk & Bebek");
-            promptBuilder.AppendLine("- Elektronik");
-            promptBuilder.AppendLine("- Güzellik");
+
 
             promptBuilder.AppendLine("\nAşağıdaki ürünlerden uygun olanları öner:");
             foreach (var product in productList)
@@ -64,27 +60,6 @@ namespace deneme.Services
                 promptBuilder.AppendLine($"- {product.Name}");
             }
 
-            // Giyim tipine göre promptu özelleştir
-            if (giyimTipi == "ust")
-            {
-                promptBuilder.AppendLine("\nNot: Kullanıcı üst giyim fotoğrafı yükledi. Lütfen üst giyim önermeyin, sadece alt giyim, ayakkabı ve aksesuar öner.");
-            }
-            else if (giyimTipi == "alt")
-            {
-                promptBuilder.AppendLine("\nNot: Kullanıcı alt giyim fotoğrafı yükledi. Lütfen alt giyim önermeyin, sadece üst giyim, ayakkabı ve aksesuar öner.");
-            }
-            else if (giyimTipi == "ayakkabi")
-            {
-                promptBuilder.AppendLine("\nNot: Kullanıcı ayakkabı fotoğrafı yükledi. Lütfen ayakkabı önermeyin, sadece üst giyim, alt giyim ve aksesuar öner.");
-            }
-            else if (giyimTipi == "aksesuar")
-            {
-                promptBuilder.AppendLine("\nNot: Kullanıcı aksesuar fotoğrafı yükledi. Lütfen aksesuar önermeyin, sadece üst giyim, alt giyim ve ayakkabı öner.");
-            }
-            else
-            {
-                promptBuilder.AppendLine("\nNot: Hem üst hem alt giyim önerisi yapabilirsin.");
-            }
 
             promptBuilder.AppendLine("\nLütfen aşağıdaki JSON formatında yanıt ver ve önerilerini sadece yukarıdaki ürünlerden seç:");
             promptBuilder.AppendLine(@"{

@@ -216,7 +216,7 @@ namespace deneme.Controllers
                 suggestion.Occasion,
                 products = matchingProducts
             };
-            
+            Console.WriteLine("\n\nGeminiresponse: " + response);
             Console.WriteLine($"Frontend'e gönderilen yanıt: {System.Text.Json.JsonSerializer.Serialize(response)}");
             return Ok(response);
         }
@@ -250,8 +250,7 @@ namespace deneme.Controllers
                 return Task.FromResult("ceket");
             }
 
-            // Dosya boyutuna göre tahmin (çok basit)
-            if (fileSize > 500000) // 500KB'dan büyükse
+            if (fileSize < 1000000) 
             {
                 return Task.FromResult("üst giyim (detaylı)");
             }
@@ -265,6 +264,32 @@ namespace deneme.Controllers
         {
             // Her kategori için ayrı arama stratejileri
             var tasks = new List<Task<(string category, List<Product> products)>>();
+
+<<<<<<< HEAD
+            // Alt giyim araması
+            if (!string.IsNullOrEmpty(suggestion.AltGiyim))
+            {
+                tasks.Add(SearchProductsWithCategory("altGiyim", suggestion.AltGiyim, 
+                    new[] { "pantolon", "jean", "etek", "şort" }));
+            }
+
+            // Ayakkabı araması  
+            if (!string.IsNullOrEmpty(suggestion.Ayakkabi))
+            {
+                tasks.Add(SearchProductsWithCategory("ayakkabi", suggestion.Ayakkabi,
+                    new[] { "ayakkabı", "bot", "sandalet", "terlik", "spor ayakkabı" }));
+            }
+
+            // Aksesuar araması
+            if (!string.IsNullOrEmpty(suggestion.Aksesuar))
+            {
+=======
+            // Üst giyim araması
+            if (!string.IsNullOrEmpty(suggestion.UstGiyim))
+            {
+                tasks.Add(SearchProductsWithCategory("ustGiyim", suggestion.UstGiyim, 
+                    new[] { "gömlek", "tisort", "ceket", "kazak"}));
+            }
 
             // Alt giyim araması
             if (!string.IsNullOrEmpty(suggestion.AltGiyim))
@@ -283,6 +308,7 @@ namespace deneme.Controllers
             // Aksesuar araması
             if (!string.IsNullOrEmpty(suggestion.Aksesuar))
             {
+>>>>>>> temp-branch
                 tasks.Add(SearchProductsWithCategory("aksesuar", suggestion.Aksesuar,
                     new[] { "çanta", "kemer", "şapka", "gözlük", "takı", "saat" }));
             }
@@ -302,8 +328,18 @@ namespace deneme.Controllers
                     DetailUrl = $"/Product/Details/{p.Id}",
                     Similarity = CalculateSimilarity(category == "altGiyim" ? suggestion.AltGiyim : 
                                                    category == "ayakkabi" ? suggestion.Ayakkabi : 
+<<<<<<< HEAD
                                                    suggestion.Aksesuar, p.Name)
                 }).OrderByDescending(x => x.Similarity).ToArray();
+=======
+                                                   category == "ustGiyim" ? suggestion.UstGiyim :
+                                                   category == "aksesuar" ? suggestion.Aksesuar :
+                                                   suggestion.Aksesuar, p.Name)
+                })
+                .Where(x => x.Similarity > 0.6) // Sadece 0.6'dan büyük benzerlik oranına sahip ürünleri filtrele
+                .OrderByDescending(x => x.Similarity)
+                .ToArray();
+>>>>>>> temp-branch
             }
 
             return response;

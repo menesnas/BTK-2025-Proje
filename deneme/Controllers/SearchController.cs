@@ -121,8 +121,16 @@ namespace deneme.Controllers
                                     .Where(p => ids.Contains(p.Id))
                                     .ToListAsync();
 
+<<<<<<< HEAD
+            // 5) Pinecone sırasına göre yeniden sırala
+            var ordered = orderedIds
+            .Select(id => products.FirstOrDefault(p => p.Id == id))
+            .Where(p => p != null)
+            .ToList();
+=======
             // 7c) using dictionary for O(1) access
             var productById = products.ToDictionary(p => p.Id);
+>>>>>>> a319df4d866b55d3856427e5c140b2b3b57ca30f
 
             // 7d) Reorder and skip any missing
             var ordered = ids
