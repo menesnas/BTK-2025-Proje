@@ -5,7 +5,8 @@ using Pinecone;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
-
+//cache search controller için kullanılacak
+builder.Services.AddMemoryCache();
 // ► Veritabanı bağlantısı
 builder.Services.AddDbContext<ApplicationDbContext>(opt =>
     opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
