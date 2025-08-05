@@ -41,7 +41,14 @@ namespace deneme.Services
                 vectors.Add(new Vector
                 {
                     Id = p.Id.ToString(),
-                    Values = embF
+                    Values = embF,
+                    Metadata = new Metadata     // Pineconda filterleme için kullanılacak metadata
+                    {
+                        ["name"] = p.Name,        // 
+                        ["colour"] = p.Colour,      // 
+                        ["category"] = p.Category,    //  
+                        ["price"] = (double)p.Price    //
+                    }
                 });
             }
 
