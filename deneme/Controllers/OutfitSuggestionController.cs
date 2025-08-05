@@ -5,6 +5,8 @@ using deneme.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Globalization;
+using Pinecone;
+
 
 namespace deneme.Controllers
 {
@@ -15,11 +17,23 @@ namespace deneme.Controllers
     {
         private readonly IAIService _aiService;
         private readonly ApplicationDbContext _context;
+        private readonly EmbeddingService _embedSvc; // Yeni ekleme
+        private readonly PineconeClient _pinecone; // Yeni ekleme
+        private readonly string _indexName; // Yeni ekleme
 
-        public OutfitSuggestionController(IAIService aiService, ApplicationDbContext context)
+        public OutfitSuggestionController(
+            IAIService aiService, 
+            ApplicationDbContext context,
+            EmbeddingService embedSvc, // Yeni parametre
+            PineconeClient pinecone, // Yeni parametre
+            IConfiguration config) // Yeni parametre
         {
             _aiService = aiService;
             _context = context;
+            _embedSvc = embedSvc; // Yeni atama
+            _pinecone = pinecone; // Yeni atama
+            _indexName = config["Pinecone:IndexName"] 
+                         ?? throw new ArgumentNullException("Pinecone:IndexName is not configured");
         }
 
         [HttpGet]
@@ -187,7 +201,7 @@ namespace deneme.Controllers
             }
 
             // Veritabanından eşleşen ürünleri bul
-            var matchingProducts = await FindMatchingProducts(suggestion);
+            var matchingProducts = await FindMatchingProductsAdvanced(suggestion);
 
             Console.WriteLine("=== API ÇAĞRISI BAŞARILI ===");
             var response = new
@@ -247,87 +261,146 @@ namespace deneme.Controllers
             }
         }
         
-        private async Task<dynamic> FindMatchingProducts(OutfitSuggestion suggestion)
+        private async Task<dynamic> FindMatchingProductsAdvanced(OutfitSuggestion suggestion)
         {
-            // Yardımcı: Türkçe karakterleri normalize et
-            string Normalize(string input)
+            // Her kategori için ayrı arama stratejileri
+            var tasks = new List<Task<(string category, List<Product> products)>>();
+
+            // Alt giyim araması
+            if (!string.IsNullOrEmpty(suggestion.AltGiyim))
             {
-                if (string.IsNullOrEmpty(input)) return "";
-                var normalized = input.ToLower(new CultureInfo("tr-TR", false));
-                normalized = normalized.Replace('ç', 'c').Replace('ğ', 'g').Replace('ı', 'i').Replace('ö', 'o').Replace('ş', 's').Replace('ü', 'u');
-                normalized = normalized.Replace('â', 'a').Replace('î', 'i').Replace('û', 'u');
-                return normalized;
+                tasks.Add(SearchProductsWithCategory("altGiyim", suggestion.AltGiyim, 
+                    new[] { "pantolon", "jean", "etek", "şort" }));
             }
-            // Yardımcı: Levenshtein mesafesi
-            int Levenshtein(string s, string t)
+
+            // Ayakkabı araması  
+            if (!string.IsNullOrEmpty(suggestion.Ayakkabi))
             {
-                if (string.IsNullOrEmpty(s)) return t?.Length ?? 0;
-                if (string.IsNullOrEmpty(t)) return s.Length;
-                int[,] d = new int[s.Length + 1, t.Length + 1];
-                for (int i = 0; i <= s.Length; i++) d[i, 0] = i;
-                for (int j = 0; j <= t.Length; j++) d[0, j] = j;
-                for (int i = 1; i <= s.Length; i++)
-                    for (int j = 1; j <= t.Length; j++)
-                        d[i, j] = Math.Min(
-                            Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1),
-                            d[i - 1, j - 1] + (s[i - 1] == t[j - 1] ? 0 : 1));
-                return d[s.Length, t.Length];
+                tasks.Add(SearchProductsWithCategory("ayakkabi", suggestion.Ayakkabi,
+                    new[] { "ayakkabı", "bot", "sandalet", "terlik", "spor ayakkabı" }));
             }
-            // AI'nın önerdiği ürün adlarını normalize et
-            var altGiyim = Normalize(suggestion.AltGiyim);
-            var ayakkabi = Normalize(suggestion.Ayakkabi);
-            var aksesuar = Normalize(suggestion.Aksesuar);
-            // Tüm ürünleri çek
-            var allProducts = await _context.Products.ToListAsync();
-            // En yakın alt giyim ürünü
-            var altGiyimProduct = allProducts
-                .Where(p => !string.IsNullOrEmpty(altGiyim))
-                .OrderBy(p => Levenshtein(Normalize(p.Name), altGiyim))
-                .FirstOrDefault();
-            // En yakın ayakkabı ürünü
-            var ayakkabiProduct = allProducts
-                .Where(p => !string.IsNullOrEmpty(ayakkabi))
-                .OrderBy(p => Levenshtein(Normalize(p.Name), ayakkabi))
-                .FirstOrDefault();
-            // En yakın aksesuar ürünü
-            var aksesuarProduct = allProducts
-                .Where(p => !string.IsNullOrEmpty(aksesuar))
-                .OrderBy(p => Levenshtein(Normalize(p.Name), aksesuar))
-                .FirstOrDefault();
-            // Listeler
-            var altGiyimProducts = altGiyimProduct != null ? new[] { new {
-                altGiyimProduct.Id,
-                altGiyimProduct.Name,
-                altGiyimProduct.Price,
-                altGiyimProduct.ImageUrl,
-                altGiyimProduct.Colour,
-                altGiyimProduct.Category,
-                DetailUrl = $"/Product/Details/{altGiyimProduct.Id}"
-            }} : new object[0];
-            var ayakkabiProducts = ayakkabiProduct != null ? new[] { new {
-                ayakkabiProduct.Id,
-                ayakkabiProduct.Name,
-                ayakkabiProduct.Price,
-                ayakkabiProduct.ImageUrl,
-                ayakkabiProduct.Colour,
-                ayakkabiProduct.Category,
-                DetailUrl = $"/Product/Details/{ayakkabiProduct.Id}"
-            }} : new object[0];
-            var aksesuarProducts = aksesuarProduct != null ? new[] { new {
-                aksesuarProduct.Id,
-                aksesuarProduct.Name,
-                aksesuarProduct.Price,
-                aksesuarProduct.ImageUrl,
-                aksesuarProduct.Colour,
-                aksesuarProduct.Category,
-                DetailUrl = $"/Product/Details/{aksesuarProduct.Id}"
-            }} : new object[0];
-            return new
+
+            // Aksesuar araması
+            if (!string.IsNullOrEmpty(suggestion.Aksesuar))
             {
-                altGiyim = altGiyimProducts,
-                ayakkabi = ayakkabiProducts,
-                aksesuar = aksesuarProducts
-            };
+                tasks.Add(SearchProductsWithCategory("aksesuar", suggestion.Aksesuar,
+                    new[] { "çanta", "kemer", "şapka", "gözlük", "takı", "saat" }));
+            }
+
+            var results = await Task.WhenAll(tasks);
+            
+            var response = new Dictionary<string, object>();
+            foreach (var (category, products) in results)
+            {
+                response[category] = products.Select(p => new {
+                    p.Id,
+                    p.Name,
+                    p.Price,
+                    p.ImageUrl,
+                    p.Colour,
+                    p.Category,
+                    DetailUrl = $"/Product/Details/{p.Id}",
+                    Similarity = CalculateSimilarity(category == "altGiyim" ? suggestion.AltGiyim : 
+                                                   category == "ayakkabi" ? suggestion.Ayakkabi : 
+                                                   suggestion.Aksesuar, p.Name)
+                }).OrderByDescending(x => x.Similarity).ToArray();
+            }
+
+            return response;
+        }
+
+        private async Task<(string category, List<Product> products)> SearchProductsWithCategory(
+            string category, string query, string[] categoryKeywords)
+        {
+            // Önce embedding ile ara
+            var embeddingResults = await SearchProductsByEmbedding(query, 5);
+            
+            // Kategori kelimelerini de ekleyerek genişletilmiş arama
+            var expandedQuery = $"{query} {string.Join(" ", categoryKeywords)}";
+            var expandedResults = await SearchProductsByEmbedding(expandedQuery, 3);
+            
+            // Sonuçları birleştir ve tekrarları kaldır
+            var allResults = embeddingResults.Concat(expandedResults)
+                .GroupBy(p => p.Id)
+                .Select(g => g.First())
+                .ToList();
+            
+            return (category, allResults);
+        }
+
+        private double CalculateSimilarity(string aiSuggestion, string productName)
+        {
+            // Basit benzerlik hesaplaması (Levenshtein veya daha gelişmiş yöntemler kullanılabilir)
+            if (string.IsNullOrEmpty(aiSuggestion) || string.IsNullOrEmpty(productName))
+                return 0;
+                
+            var suggestion = aiSuggestion.ToLower().Trim();
+            var product = productName.ToLower().Trim();
+            
+            // Kelime bazlı eşleşme kontrolü
+            var suggestionWords = suggestion.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var productWords = product.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            
+            var matchCount = suggestionWords.Count(sw => 
+                productWords.Any(pw => pw.Contains(sw) || sw.Contains(pw)));
+                
+            return (double)matchCount / Math.Max(suggestionWords.Length, productWords.Length);
+        }
+
+        // Yeni method: Embedding tabanlı ürün arama
+        private async Task<List<Product>> SearchProductsByEmbedding(string query, int topK = 5)
+        {
+            if (string.IsNullOrEmpty(query) || query.Trim() == "")
+            {
+                return new List<Product>();
+            }
+
+            try
+            {
+                Console.WriteLine($"Embedding arama yapılıyor: '{query}'");
+                
+                // 1) Sorguyu embed et
+                var embD = await _embedSvc.GetEmbeddingAsync(query);
+                var embF = embD.Select(d => (float)d).ToArray();
+
+                // 2) Pinecone query isteği yap
+                var index = _pinecone.Index(_indexName);
+                var queryRequest = new QueryRequest
+                {
+                    Vector = embF,
+                    TopK = (uint)topK,
+                    IncludeValues = false,
+                    IncludeMetadata = false
+                };
+                var queryRes = await index.QueryAsync(queryRequest);
+
+                // 3) ID listesini al
+                var orderedIds = queryRes.Matches.Select(m => int.Parse(m.Id)).ToList();
+                Console.WriteLine($"Bulunan ürün ID'leri: {string.Join(", ", orderedIds)}");
+
+                // 4) SQL'den ürünleri çek
+                var products = await _context.Products.Where(p => orderedIds.Contains(p.Id)).ToListAsync();
+
+                // 5) Pinecone sırasına göre yeniden sırala
+                var ordered = orderedIds
+                    .Select(id => products.FirstOrDefault(p => p.Id == id))
+                    .Where(p => p != null)
+                    .Cast<Product>()
+                    .ToList();
+
+                Console.WriteLine($"'{query}' için {ordered.Count} ürün bulundu");
+                return ordered;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Embedding arama hatası ({query}): {ex.Message}");
+                // Fallback: Basit text arama
+                return await _context.Products
+                    .Where(p => p.Name.ToLower().Contains(query.ToLower()) || 
+                               p.Category.ToLower().Contains(query.ToLower()))
+                    .Take(topK)
+                    .ToListAsync();
+            }
         }
 
         private IFormFile ConvertBase64ToFormFile(string base64String, string fileName, string contentType)

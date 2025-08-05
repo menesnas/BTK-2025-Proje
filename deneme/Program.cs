@@ -38,6 +38,17 @@ builder.Services.AddSingleton(sp =>
 // 6) your indexing service
 builder.Services.AddScoped<IndexingService>();
 
+// Pinecone ve EmbeddingService'i OutfitSuggestionController için de kullanılabilir hale getir
+// (Muhtemelen zaten ekli ama emin olmak için)
+
+builder.Services.AddScoped<EmbeddingService>();
+builder.Services.AddSingleton<PineconeClient>(provider =>
+{
+    var config = provider.GetRequiredService<IConfiguration>();
+    var apiKey = config["Pinecone:ApiKey"] ?? throw new ArgumentNullException("Pinecone:ApiKey");
+    return new PineconeClient(apiKey);
+});
+
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddControllers()

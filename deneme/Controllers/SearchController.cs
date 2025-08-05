@@ -54,9 +54,9 @@ namespace deneme.Controllers
 
             // 5) Pinecone sırasına göre yeniden sırala
             var ordered = orderedIds
-    .Select(id => products.FirstOrDefault(p => p.Id == id))
-    .Where(p => p != null)
-    .ToList();
+            .Select(id => products.FirstOrDefault(p => p.Id == id))
+            .Where(p => p != null)
+            .ToList();
 
             return Ok(ordered);
         }
