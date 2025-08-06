@@ -13,6 +13,12 @@ namespace deneme.Data
 
         // DbSet tanımlamaları
         public DbSet<Product> Products { get; set; }
+<<<<<<< HEAD
+=======
+
+        
+
+>>>>>>> 58b4ee77e0fe94b2fff59c5dac536358bd791fe5
      
     }
 }

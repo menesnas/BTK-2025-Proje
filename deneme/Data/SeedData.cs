@@ -30,7 +30,11 @@ namespace deneme.Data
                     },
                     new Product
                     {
+<<<<<<< HEAD
                         Name = "Spor Ayakkabı",
+=======
+                        Name = "Erkek Spor Ayakkabı",
+>>>>>>> 58b4ee77e0fe94b2fff59c5dac536358bd791fe5
                         Colour = "Beyaz",
                         Description = "Rahat tabanlı günlük spor ayakkabı.",
                         Price = 299.99m,

@@ -616,10 +616,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h6 class="fw-bold text-primary mb-2">${style} Kombini</h6>
                         <div class="row g-2 text-center">
                             <div class="col-12">
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+                                <small class="text-muted d-block cursor-pointer" ">👔 ${altGiyim}</small>
+                                <small class="text-muted d-block cursor-pointer" ', '')">👟 ${ayakkabi}</small>
+                                <small class="text-muted d-block cursor-pointer" ')">👜 ${aksesuar}</small>
+=======
+>>>>>>> 58b4ee77e0fe94b2fff59c5dac536358bd791fe5
                                 <small class="text-muted d-block cursor-pointer" "> ${ustGiyim}</small>
                                 <small class="text-muted d-block cursor-pointer" "> ${altGiyim}</small>
                                 <small class="text-muted d-block cursor-pointer" "> ${ayakkabi}</small>
                                 <small class="text-muted d-block cursor-pointer" "> ${aksesuar}</small>
+<<<<<<< HEAD
+=======
+>>>>>>> temp-branch
+>>>>>>> 58b4ee77e0fe94b2fff59c5dac536358bd791fe5
                             </div>
                         </div>
                         <button class="btn btn-sm btn-primary mt-2 w-100" onclick="openOutfitSuggestion()">

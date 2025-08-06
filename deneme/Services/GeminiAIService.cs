@@ -57,6 +57,7 @@ namespace deneme.Services
                 promptBuilder.AppendLine($"Tercih edilen renkler: {preferences.PreferredColors}");
             }
 
+<<<<<<< HEAD
             promptBuilder.AppendLine("\nÖnemli: Önerdiğin ürünler aşağıdaki kategorilerden olmalıdır ve hedef cinsiyet ile uyumlu olmalıdır:");
             
             if (!string.IsNullOrEmpty(gender))
@@ -74,6 +75,10 @@ namespace deneme.Services
                     promptBuilder.AppendLine("- Cinsiyet uyumlu kıyafetleri öner");
                 }
             }
+=======
+            promptBuilder.AppendLine("\nÖnemli: Önerdiğin ürünler aşağıdaki kategorilerden olmalıdır:");
+
+>>>>>>> 58b4ee77e0fe94b2fff59c5dac536358bd791fe5
 
             promptBuilder.AppendLine("\nAşağıdaki ürünlerden uygun olanları öner:");
             foreach (var product in productList)
