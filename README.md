@@ -2,9 +2,9 @@
 ### Tema : E-Ticaret
 
 ### Projede bulunan ai sistemleri :
-1 Ürün sayfasında ürün hakkında soru cevap bölümü ai ile desteklenmiştir.
-2 Akıllı semantic arama sistemi
-3 Kombin öneri sistemi
+1. Ürün sayfasında ürün hakkında soru cevap bölümü ai ile desteklenmiştir.
+2. Akıllı semantic arama sistemi
+3. Kombin öneri sistemi
 
 # Akıllı Semantic Arama Sistemi
 
