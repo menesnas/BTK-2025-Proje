@@ -49,3 +49,6 @@
 - **Google Generative Language API (Gemini)** 
 - **Pinecone Vector DB**
 - **Javascript**
+
+
+Video link : https://www.youtube.com/watch?v=RjMfzGE1ipI
