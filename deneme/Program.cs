@@ -8,7 +8,9 @@ var builder = WebApplication.CreateBuilder(args);
 //cache search controller için kullanılacak
 builder.Services.AddMemoryCache();
 // ► Veritabanı bağlantısı
-builder.Services.AddDbContext<ApplicationDbContext>(opt =>
+//builder.Services.AddDbContext<ApplicationDbContext>(opt =>
+//    opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContextFactory<ApplicationDbContext>(opt =>
     opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // ► MVC desteği
@@ -31,16 +33,16 @@ builder.Services
 // 4) your embedding HTTP client
 builder.Services.AddHttpClient<EmbeddingService>();
 
-// 5) Pinecone client
-// builder.Services.AddSingleton(sp =>
-//     new PineconeClient(builder.Configuration["Pinecone:ApiKey"]!)
-// );
+//// 5) Pinecone client
+builder.Services.AddSingleton(sp =>
+    new PineconeClient(builder.Configuration["Pinecone:ApiKey"]!)
+);
 
-// 6) your indexing service
-// builder.Services.AddScoped<IndexingService>();
+//// 6) your indexing service
+builder.Services.AddScoped<IndexingService>();
 
-// Pinecone ve EmbeddingService'i OutfitSuggestionController için de kullanılabilir hale getir
-// (Muhtemelen zaten ekli ama emin olmak için)
+//Pinecone ve EmbeddingService'i OutfitSuggestionController için de kullanılabilir hale getir
+//(Muhtemelen zaten ekli ama emin olmak için)
 
 builder.Services.AddScoped<EmbeddingService>();
 builder.Services.AddSingleton<PineconeClient>(provider =>
@@ -71,12 +73,13 @@ using (var scope = app.Services.CreateScope())
     SeedData.Initialize(db);         // varsa seed data
 }
 
-// 8) Push to Pinecone
-// using (var scope = app.Services.CreateScope())
-// {
-//     var indexer = scope.ServiceProvider.GetRequiredService<IndexingService>();
-//     await indexer.UpsertAllProductsAsync();
-// }
+//// 8) Push to Pinecone
+using (var scope = app.Services.CreateScope())
+{
+    var indexer = scope.ServiceProvider.GetRequiredService<IndexingService>();
+    await indexer.UpsertAllProductsAsync();
+}
+
 
 // ► Pipeline
 if (!app.Environment.IsDevelopment())

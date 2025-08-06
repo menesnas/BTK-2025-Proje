@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 using Microsoft.AspNetCore.Mvc;
 using deneme.Services;
 using deneme.Data;
@@ -17,20 +16,20 @@ namespace deneme.Controllers
     public class OutfitSuggestionController : ControllerBase
     {
         private readonly IAIService _aiService;
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly EmbeddingService _embedSvc; // Yeni ekleme
         private readonly PineconeClient _pinecone; // Yeni ekleme
         private readonly string _indexName; // Yeni ekleme
 
         public OutfitSuggestionController(
             IAIService aiService, 
-            ApplicationDbContext context,
+            IDbContextFactory<ApplicationDbContext> contextFactory,
             EmbeddingService embedSvc, // Yeni parametre
             PineconeClient pinecone, // Yeni parametre
             IConfiguration config) // Yeni parametre
         {
             _aiService = aiService;
-            _context = context;
+            _contextFactory = contextFactory;
             _embedSvc = embedSvc; // Yeni atama
             _pinecone = pinecone; // Yeni atama
             _indexName = config["Pinecone:IndexName"] 
@@ -172,7 +171,11 @@ namespace deneme.Controllers
             };
 
             // Veritabanından ürün listesini al
-            var productList = await _context.Products.Take(30).ToListAsync();
+            List<Product> productList;
+            using (var context = _contextFactory.CreateDbContext())
+            {
+                productList = await context.Products.Take(30).ToListAsync();
+            }
 
             Console.WriteLine("AI servisini çağırıyor...");
             // Cinsiyet bilgisini de AI servisine gönder
@@ -399,7 +402,8 @@ namespace deneme.Controllers
                 Console.WriteLine($"Bulunan ürün ID'leri: {string.Join(", ", orderedIds)}");
 
                 // 4) SQL'den ürünleri çek
-                var products = await _context.Products.Where(p => orderedIds.Contains(p.Id)).ToListAsync();
+                using var context = _contextFactory.CreateDbContext();
+                var products = await context.Products.Where(p => orderedIds.Contains(p.Id)).ToListAsync();
 
                 // 5) Pinecone sırasına göre yeniden sırala
                 var ordered = orderedIds
@@ -415,7 +419,8 @@ namespace deneme.Controllers
             {
                 Console.WriteLine($"Embedding arama hatası ({query}): {ex.Message}");
                 // Fallback: Basit text arama
-                return await _context.Products
+                using var context = _contextFactory.CreateDbContext();
+                return await context.Products
                     .Where(p => p.Name.ToLower().Contains(query.ToLower()) || 
                                p.Category.ToLower().Contains(query.ToLower()))
                     .Take(topK)
@@ -474,498 +479,4 @@ namespace deneme.Controllers
         public string BudgetRange { get; set; } = string.Empty;
         public string PreferredColors { get; set; } = string.Empty;
     }
-=======
-using Microsoft.AspNetCore.Mvc;
-using deneme.Services;
-using deneme.Data;
-using deneme.Models;
-using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Globalization;
-using Pinecone;
-
-
-namespace deneme.Controllers
-{
-    
-    [ApiController]
-    [Route("api/[controller]")]
-    public class OutfitSuggestionController : ControllerBase
-    {
-        private readonly IAIService _aiService;
-        private readonly ApplicationDbContext _context;
-        private readonly EmbeddingService _embedSvc; // Yeni ekleme
-        private readonly PineconeClient _pinecone; // Yeni ekleme
-        private readonly string _indexName; // Yeni ekleme
-
-        public OutfitSuggestionController(
-            IAIService aiService, 
-            ApplicationDbContext context,
-            EmbeddingService embedSvc, // Yeni parametre
-            PineconeClient pinecone, // Yeni parametre
-            IConfiguration config) // Yeni parametre
-        {
-            _aiService = aiService;
-            _context = context;
-            _embedSvc = embedSvc; // Yeni atama
-            _pinecone = pinecone; // Yeni atama
-            _indexName = config["Pinecone:IndexName"] 
-                         ?? throw new ArgumentNullException("Pinecone:IndexName is not configured");
-        }
-
-        [HttpGet]
-        [Route("test")]
-        public IActionResult Test()
-        {
-            return Ok(new { message = "API çalışıyor!", timestamp = DateTime.Now });
-        }
-
-        [HttpPost]
-        [Route("test-json")]
-        public IActionResult TestJson([FromBody] OutfitRequestBase64 request)
-        {
-            try
-            {
-                Console.WriteLine("=== TEST JSON ===");
-                Console.WriteLine($"Request null mu: {request == null}");
-                if (request != null)
-                {
-                    Console.WriteLine($"Base64 length: {request.ClothingImageBase64?.Length}");
-                    Console.WriteLine($"FileName: {request.FileName}");
-                    Console.WriteLine($"Occasion: {request.Occasion}");
-                }
-                
-                return Ok(new { 
-                    message = "JSON deserialization başarılı!", 
-                    receivedData = new {
-                        hasBase64 = !string.IsNullOrEmpty(request?.ClothingImageBase64),
-                        base64Length = request?.ClothingImageBase64?.Length,
-                        fileName = request?.FileName,
-                        occasion = request?.Occasion
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
-        }
-
-        [HttpPost]
-        [Route("form")]
-        public async Task<IActionResult> GetOutfitSuggestionForm([FromForm] OutfitRequest request)
-        {
-            try
-            {
-                Console.WriteLine("=== FORM API ÇAĞRISI BAŞLADI ===");
-                Console.WriteLine($"Gelen dosya: {request.ClothingImage?.FileName}");
-                Console.WriteLine($"Dosya boyutu: {request.ClothingImage?.Length}");
-                
-                return await ProcessOutfitSuggestion(request.ClothingImage, request.Occasion, request.BudgetRange, request.PreferredColors);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"=== FORM API HATASI ===");
-                Console.WriteLine($"Hata: {ex.Message}");
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
-
-        [HttpPost]
-        [Route("json")]
-        public async Task<IActionResult> GetOutfitSuggestionJson([FromBody] OutfitRequestBase64 request)
-        {
-            try
-            {
-                Console.WriteLine("=== JSON API ÇAĞRISI BAŞLADI ===");
-                
-                // Null check
-                if (request == null)
-                {
-                    Console.WriteLine("Request null!");
-                    return BadRequest(new { success = false, message = "Request is null" });
-                }
-                
-                Console.WriteLine($"Request object alındı");
-                Console.WriteLine($"ClothingImageBase64 null mu: {request.ClothingImageBase64 == null}");
-                Console.WriteLine($"ClothingImageBase64 boş mu: {string.IsNullOrEmpty(request.ClothingImageBase64)}");
-                Console.WriteLine($"Gelen base64 uzunluğu: {request.ClothingImageBase64?.Length}");
-                Console.WriteLine($"Dosya adı: {request.FileName}");
-                Console.WriteLine($"Dosya tipi: {request.FileType}");
-                Console.WriteLine($"Occasion: {request.Occasion}");
-                Console.WriteLine($"Budget: {request.BudgetRange}");
-                
-                // Validation
-                if (string.IsNullOrEmpty(request.ClothingImageBase64))
-                {
-                    Console.WriteLine("Base64 image boş!");
-                    return BadRequest(new { success = false, message = "ClothingImageBase64 is required" });
-                }
-                
-                if (string.IsNullOrEmpty(request.Occasion))
-                {
-                    Console.WriteLine("Occasion boş!");
-                    return BadRequest(new { success = false, message = "Occasion is required" });
-                }
-                
-                Console.WriteLine("Base64'ü FormFile'a çevriliyor...");
-                // Base64'ü IFormFile'a çevir
-                var imageFile = ConvertBase64ToFormFile(request.ClothingImageBase64, request.FileName, request.FileType);
-                Console.WriteLine($"FormFile oluşturuldu, boyut: {imageFile.Length}");
-                
-                return await ProcessOutfitSuggestion(imageFile, request.Occasion, request.BudgetRange, request.PreferredColors);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"=== JSON API HATASI ===");
-                Console.WriteLine($"Hata: {ex.Message}");
-                Console.WriteLine($"Stack: {ex.StackTrace}");
-                return BadRequest(new { success = false, message = ex.Message, stackTrace = ex.StackTrace });
-            }
-        }
-
-        private async Task<IActionResult> ProcessOutfitSuggestion(IFormFile? imageFile, string occasion, string budgetRange, string preferredColors)
-        {
-            // Null check
-            if (imageFile == null)
-            {
-                Console.WriteLine("ImageFile null!");
-                return BadRequest(new { success = false, message = "Image file is required" });
-            }
-
-            // Gelen fotoğrafı analiz et
-            var imageDescription = await AnalyzeImage(imageFile);
-            Console.WriteLine($"Image description: {imageDescription}");
-
-            // Giyim tipi tespiti (basit)
-            string giyimTipi = "";
-            var fileName = imageFile.FileName?.ToLower() ?? "";
-            if (fileName.Contains("shirt") || fileName.Contains("gomlek") || fileName.Contains("tisort") || fileName.Contains("kazak") || fileName.Contains("ceket") || fileName.Contains("ust"))
-            {
-                giyimTipi = "ust";
-            }
-            else if (fileName.Contains("jean") || fileName.Contains("pantolon") || fileName.Contains("alt"))
-            {
-                giyimTipi = "alt";
-            }
-
-            var preferences = new OutfitPreferences
-            {
-                Occasion = occasion,
-                BudgetRange = budgetRange,
-                PreferredColors = preferredColors
-            };
-
-            // Veritabanından ürün listesini al
-            var productList = await _context.Products.Take(30).ToListAsync();
-
-            Console.WriteLine("AI servisini çağırıyor...");
-            var suggestion = await _aiService.GetOutfitSuggestionAsync(imageDescription, preferences, productList);
-            Console.WriteLine($"AI yanıtı alındı: {suggestion.Style}");
-
-            // Yüklenen giyim tipine göre öneri alanını sıfırla
-            if (giyimTipi == "alt") {
-                suggestion.AltGiyim = "";
-            }
-            if (giyimTipi == "ust") {
-                suggestion.UstGiyim = "";
-            }
-            if (giyimTipi == "ayakkabi") {
-                suggestion.Ayakkabi = "";
-            }
-            if (giyimTipi == "aksesuar") {
-                suggestion.Aksesuar = "";
-            }
-
-            // Veritabanından eşleşen ürünleri bul
-            var matchingProducts = await FindMatchingProductsAdvanced(suggestion);
-
-            Console.WriteLine("=== API ÇAĞRISI BAŞARILI ===");
-            var response = new
-            {
-                success = true,
-                suggestion.Style,
-                suggestion.UstGiyim,
-                suggestion.AltGiyim,
-                suggestion.Ayakkabi,
-                suggestion.Aksesuar,
-                suggestion.ColorScheme,
-                suggestion.Occasion,
-                products = matchingProducts
-            };
-            Console.WriteLine("\n\nGeminiresponse: " + response);
-            Console.WriteLine($"Frontend'e gönderilen yanıt: {System.Text.Json.JsonSerializer.Serialize(response)}");
-            return Ok(response);
-        }
-
-        private Task<string> AnalyzeImage(IFormFile? image)
-        {
-            
-            if (image == null || image.Length == 0)
-            {
-                return Task.FromResult("kıyafet");
-            }
-
-            var fileName = image.FileName?.ToLower() ?? "";
-            var fileSize = image.Length;
-
-            // Dosya adı ve boyutuna göre basit tahminler
-            if (fileName.Contains("shirt") || fileName.Contains("gomlek") || fileName.Contains("tisort"))
-            {
-                return Task.FromResult("gömlek veya tişört");
-            }
-            else if (fileName.Contains("jean") || fileName.Contains("pantolon"))
-            {
-                return Task.FromResult("pantolon");
-            }
-            else if (fileName.Contains("dress") || fileName.Contains("elbise"))
-            {
-                return Task.FromResult("elbise");
-            }
-            else if (fileName.Contains("jacket") || fileName.Contains("ceket"))
-            {
-                return Task.FromResult("ceket");
-            }
-
-            if (fileSize < 1000000) 
-            {
-                return Task.FromResult("üst giyim (detaylı)");
-            }
-            else
-            {
-                return Task.FromResult("kıyafet parçası");
-            }
-        }
-        
-        private async Task<dynamic> FindMatchingProductsAdvanced(OutfitSuggestion suggestion)
-        {
-            // Her kategori için ayrı arama stratejileri
-            var tasks = new List<Task<(string category, List<Product> products)>>();
-
-<<<<<<< HEAD
-            // Alt giyim araması
-            if (!string.IsNullOrEmpty(suggestion.AltGiyim))
-            {
-                tasks.Add(SearchProductsWithCategory("altGiyim", suggestion.AltGiyim, 
-                    new[] { "pantolon", "jean", "etek", "şort" }));
-            }
-
-            // Ayakkabı araması  
-            if (!string.IsNullOrEmpty(suggestion.Ayakkabi))
-            {
-                tasks.Add(SearchProductsWithCategory("ayakkabi", suggestion.Ayakkabi,
-                    new[] { "ayakkabı", "bot", "sandalet", "terlik", "spor ayakkabı" }));
-            }
-
-            // Aksesuar araması
-            if (!string.IsNullOrEmpty(suggestion.Aksesuar))
-            {
-=======
-            // Üst giyim araması
-            if (!string.IsNullOrEmpty(suggestion.UstGiyim))
-            {
-                tasks.Add(SearchProductsWithCategory("ustGiyim", suggestion.UstGiyim, 
-                    new[] { "gömlek", "tisort", "ceket", "kazak"}));
-            }
-
-            // Alt giyim araması
-            if (!string.IsNullOrEmpty(suggestion.AltGiyim))
-            {
-                tasks.Add(SearchProductsWithCategory("altGiyim", suggestion.AltGiyim, 
-                    new[] { "pantolon", "jean", "etek", "şort" }));
-            }
-
-            // Ayakkabı araması  
-            if (!string.IsNullOrEmpty(suggestion.Ayakkabi))
-            {
-                tasks.Add(SearchProductsWithCategory("ayakkabi", suggestion.Ayakkabi,
-                    new[] { "ayakkabı", "bot", "sandalet", "terlik", "spor ayakkabı" }));
-            }
-
-            // Aksesuar araması
-            if (!string.IsNullOrEmpty(suggestion.Aksesuar))
-            {
->>>>>>> temp-branch
-                tasks.Add(SearchProductsWithCategory("aksesuar", suggestion.Aksesuar,
-                    new[] { "çanta", "kemer", "şapka", "gözlük", "takı", "saat" }));
-            }
-
-            var results = await Task.WhenAll(tasks);
-            
-            var response = new Dictionary<string, object>();
-            foreach (var (category, products) in results)
-            {
-                response[category] = products.Select(p => new {
-                    p.Id,
-                    p.Name,
-                    p.Price,
-                    p.ImageUrl,
-                    p.Colour,
-                    p.Category,
-                    DetailUrl = $"/Product/Details/{p.Id}",
-                    Similarity = CalculateSimilarity(category == "altGiyim" ? suggestion.AltGiyim : 
-                                                   category == "ayakkabi" ? suggestion.Ayakkabi : 
-<<<<<<< HEAD
-                                                   suggestion.Aksesuar, p.Name)
-                }).OrderByDescending(x => x.Similarity).ToArray();
-=======
-                                                   category == "ustGiyim" ? suggestion.UstGiyim :
-                                                   category == "aksesuar" ? suggestion.Aksesuar :
-                                                   suggestion.Aksesuar, p.Name)
-                })
-                .Where(x => x.Similarity > 0.6) // Sadece 0.6'dan büyük benzerlik oranına sahip ürünleri filtrele
-                .OrderByDescending(x => x.Similarity)
-                .ToArray();
->>>>>>> temp-branch
-            }
-
-            return response;
-        }
-
-        private async Task<(string category, List<Product> products)> SearchProductsWithCategory(
-            string category, string query, string[] categoryKeywords)
-        {
-            // Önce embedding ile ara
-            var embeddingResults = await SearchProductsByEmbedding(query, 5);
-            
-            // Kategori kelimelerini de ekleyerek genişletilmiş arama
-            var expandedQuery = $"{query} {string.Join(" ", categoryKeywords)}";
-            var expandedResults = await SearchProductsByEmbedding(expandedQuery, 3);
-            
-            // Sonuçları birleştir ve tekrarları kaldır
-            var allResults = embeddingResults.Concat(expandedResults)
-                .GroupBy(p => p.Id)
-                .Select(g => g.First())
-                .ToList();
-            
-            return (category, allResults);
-        }
-
-        private double CalculateSimilarity(string aiSuggestion, string productName)
-        {
-            // Basit benzerlik hesaplaması (Levenshtein veya daha gelişmiş yöntemler kullanılabilir)
-            if (string.IsNullOrEmpty(aiSuggestion) || string.IsNullOrEmpty(productName))
-                return 0;
-                
-            var suggestion = aiSuggestion.ToLower().Trim();
-            var product = productName.ToLower().Trim();
-            
-            // Kelime bazlı eşleşme kontrolü
-            var suggestionWords = suggestion.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var productWords = product.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            
-            var matchCount = suggestionWords.Count(sw => 
-                productWords.Any(pw => pw.Contains(sw) || sw.Contains(pw)));
-                
-            return (double)matchCount / Math.Max(suggestionWords.Length, productWords.Length);
-        }
-
-        // Yeni method: Embedding tabanlı ürün arama
-        private async Task<List<Product>> SearchProductsByEmbedding(string query, int topK = 5)
-        {
-            if (string.IsNullOrEmpty(query) || query.Trim() == "")
-            {
-                return new List<Product>();
-            }
-
-            try
-            {
-                Console.WriteLine($"Embedding arama yapılıyor: '{query}'");
-                
-                // 1) Sorguyu embed et
-                var embD = await _embedSvc.GetEmbeddingAsync(query);
-                var embF = embD.Select(d => (float)d).ToArray();
-
-                // 2) Pinecone query isteği yap
-                var index = _pinecone.Index(_indexName);
-                var queryRequest = new QueryRequest
-                {
-                    Vector = embF,
-                    TopK = (uint)topK,
-                    IncludeValues = false,
-                    IncludeMetadata = false
-                };
-                var queryRes = await index.QueryAsync(queryRequest);
-
-                // 3) ID listesini al
-                var orderedIds = queryRes.Matches.Select(m => int.Parse(m.Id)).ToList();
-                Console.WriteLine($"Bulunan ürün ID'leri: {string.Join(", ", orderedIds)}");
-
-                // 4) SQL'den ürünleri çek
-                var products = await _context.Products.Where(p => orderedIds.Contains(p.Id)).ToListAsync();
-
-                // 5) Pinecone sırasına göre yeniden sırala
-                var ordered = orderedIds
-                    .Select(id => products.FirstOrDefault(p => p.Id == id))
-                    .Where(p => p != null)
-                    .Cast<Product>()
-                    .ToList();
-
-                Console.WriteLine($"'{query}' için {ordered.Count} ürün bulundu");
-                return ordered;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Embedding arama hatası ({query}): {ex.Message}");
-                // Fallback: Basit text arama
-                return await _context.Products
-                    .Where(p => p.Name.ToLower().Contains(query.ToLower()) || 
-                               p.Category.ToLower().Contains(query.ToLower()))
-                    .Take(topK)
-                    .ToListAsync();
-            }
-        }
-
-        private IFormFile ConvertBase64ToFormFile(string base64String, string fileName, string contentType)
-        {
-            var bytes = Convert.FromBase64String(base64String);
-            var stream = new MemoryStream(bytes);
-            
-            return new CustomFormFile(stream, fileName, contentType);
-        }
-    }
-
-    // Basit FormFile implementation
-    public class CustomFormFile : IFormFile
-    {
-        private readonly Stream _stream;
-        
-        public CustomFormFile(Stream stream, string fileName, string contentType)
-        {
-            _stream = stream;
-            FileName = fileName;
-            ContentType = contentType;
-            Length = stream.Length;
-        }
-
-        public string ContentType { get; }
-        public string ContentDisposition => $"form-data; name=\"file\"; filename=\"{FileName}\"";
-        public IHeaderDictionary Headers { get; } = new HeaderDictionary();
-        public long Length { get; }
-        public string Name => "file";
-        public string FileName { get; }
-
-        public void CopyTo(Stream target) => _stream.CopyTo(target);
-        public Task CopyToAsync(Stream target, CancellationToken cancellationToken = default) => _stream.CopyToAsync(target, cancellationToken);
-        public Stream OpenReadStream() => _stream;
-    }
-
-    public class OutfitRequest
-    {
-        public IFormFile ClothingImage { get; set; } = null!;
-        public string Occasion { get; set; } = string.Empty;
-        public string BudgetRange { get; set; } = string.Empty;
-        public string PreferredColors { get; set; } = string.Empty;
-    }
-
-    public class OutfitRequestBase64
-    {
-        public string ClothingImageBase64 { get; set; } = string.Empty;
-        public string FileName { get; set; } = string.Empty;
-        public string FileType { get; set; } = string.Empty;
-        public string Occasion { get; set; } = string.Empty;
-        public string BudgetRange { get; set; } = string.Empty;
-        public string PreferredColors { get; set; } = string.Empty;
-    }
->>>>>>> 58b4ee77e0fe94b2fff59c5dac536358bd791fe5
-} 
+}

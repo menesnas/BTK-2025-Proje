@@ -11,8 +11,8 @@ using deneme.Data;
 namespace deneme.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250805203615_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250806085444_deneme")]
+    partial class deneme
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

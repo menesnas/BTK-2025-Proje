@@ -23,16 +23,15 @@ namespace deneme.Services
         /// </summary>
         public async Task<string> AskAsync(string prompt)
         {
-            // 📌 Model adını burada değiştiriyoruz
             var url = $"{BaseUrl}/gemini-1.5-flash:generateContent?key={_apiKey}";
 
             var body = JsonSerializer.Serialize(new
             {
                 contents = new[] {
-                    new {
-                        parts = new[] { new { text = prompt } }
-                    }
-                }
+            new {
+                parts = new[] { new { text = prompt } }
+            }
+        }
             });
 
             var resp = await _http.PostAsync(
@@ -44,13 +43,26 @@ namespace deneme.Services
             if (!resp.IsSuccessStatusCode)
                 return $"API Hatası {(int)resp.StatusCode}: {raw}";
 
+            // 🛠️ doc burada tanımlanmalı
             using var doc = JsonDocument.Parse(raw);
-            return doc.RootElement
-                      .GetProperty("candidates")[0]
-                      .GetProperty("content")
-                      .GetProperty("parts")[0]
-                      .GetProperty("text")
-                      .GetString() ?? "(boş)";
+
+            var responseText = doc.RootElement
+                           .GetProperty("candidates")[0]
+                           .GetProperty("content")
+                           .GetProperty("parts")[0]
+                           .GetProperty("text")
+                           .GetString() ?? "(boş)";
+
+            // Eğer içerik {"answer": "..."} gibiyse sadece "answer" değerini döndür
+            try
+            {
+                using var innerDoc = JsonDocument.Parse(responseText);
+                return innerDoc.RootElement.GetProperty("answer").GetString() ?? "(boş)";
+            }
+            catch
+            {
+                return responseText;
+            }
         }
     }
 }
