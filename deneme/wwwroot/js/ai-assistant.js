@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const aksesuar = suggestion.Aksesuar || suggestion.aksesuar || 'Aksesuar önerisi';
         const colorScheme = suggestion.ColorScheme || suggestion.colorScheme || 'Renk şeması';
         const occasion = suggestion.Occasion || suggestion.occasion || 'Durum';
+        const detectedGender = suggestion.detectedGender || suggestion.DetectedGender || '';
         const products = suggestion.products || {};
         
         // Yardımcı: Ürün adı ile products objesinde eşleşen ürünün DetailUrl'ini bul
@@ -327,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h6 class="fw-bold text-primary mb-2">
                         <i class="fas fa-sparkles me-1"></i>${style} Kombini
                     </h6>
-                    <small class="text-muted">${occasion} • ${colorScheme}</small>
+                    <small class="text-muted">${occasion} • ${colorScheme}${detectedGender ? ` • ${detectedGender === 'kadin' ? 'Kadın' : detectedGender === 'erkek' ? 'Erkek' : 'Unisex'}` : ''}</small>
                 </div>
                 <div class="row g-3 mb-3">
                     ${ustGiyimHtml}
@@ -604,6 +605,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Güvenli property erişimi
                 const style = result.Style || result.style || 'Kombin';
+                const ustGiyim = result.UstGiyim || result.ustGiyim || 'Üst giyim';
                 const altGiyim = result.AltGiyim || result.altGiyim || 'Alt giyim';
                 const ayakkabi = result.Ayakkabi || result.ayakkabi || 'Ayakkabı';
                 const aksesuar = result.Aksesuar || result.aksesuar || 'Aksesuar';
@@ -614,9 +616,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h6 class="fw-bold text-primary mb-2">${style} Kombini</h6>
                         <div class="row g-2 text-center">
                             <div class="col-12">
-                                <small class="text-muted d-block cursor-pointer" ">👔 ${altGiyim}</small>
-                                <small class="text-muted d-block cursor-pointer" ', '')">👟 ${ayakkabi}</small>
-                                <small class="text-muted d-block cursor-pointer" ')">👜 ${aksesuar}</small>
+                                <small class="text-muted d-block cursor-pointer" "> ${ustGiyim}</small>
+                                <small class="text-muted d-block cursor-pointer" "> ${altGiyim}</small>
+                                <small class="text-muted d-block cursor-pointer" "> ${ayakkabi}</small>
+                                <small class="text-muted d-block cursor-pointer" "> ${aksesuar}</small>
                             </div>
                         </div>
                         <button class="btn btn-sm btn-primary mt-2 w-100" onclick="openOutfitSuggestion()">

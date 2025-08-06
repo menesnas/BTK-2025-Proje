@@ -156,21 +156,12 @@ namespace deneme.Controllers
                 return BadRequest(new { success = false, message = "Image file is required" });
             }
 
-            // Gelen fotoğrafı analiz et
-            var imageDescription = await AnalyzeImage(imageFile);
+            Console.WriteLine("Gemini ile görsel analiz yapılıyor...");
+            // Gemini ile görsel analiz yap - açıklama, kıyafet tipi ve cinsiyet bilgisi al
+            var (imageDescription, clothingType, gender) = await _aiService.AnalyzeClothingImageAsync(imageFile);
             Console.WriteLine($"Image description: {imageDescription}");
-
-            // Giyim tipi tespiti (basit)
-            string giyimTipi = "";
-            var fileName = imageFile.FileName?.ToLower() ?? "";
-            if (fileName.Contains("shirt") || fileName.Contains("gomlek") || fileName.Contains("tisort") || fileName.Contains("kazak") || fileName.Contains("ceket") || fileName.Contains("ust"))
-            {
-                giyimTipi = "ust";
-            }
-            else if (fileName.Contains("jean") || fileName.Contains("pantolon") || fileName.Contains("alt"))
-            {
-                giyimTipi = "alt";
-            }
+            Console.WriteLine($"Clothing type: {clothingType}");
+            Console.WriteLine($"Gender: {gender}");
 
             var preferences = new OutfitPreferences
             {
@@ -183,88 +174,111 @@ namespace deneme.Controllers
             var productList = await _context.Products.Take(30).ToListAsync();
 
             Console.WriteLine("AI servisini çağırıyor...");
-            var suggestion = await _aiService.GetOutfitSuggestionAsync(imageDescription, preferences, productList);
-            Console.WriteLine($"AI yanıtı alındı: {suggestion.Style}");
-
-            // Yüklenen giyim tipine göre öneri alanını sıfırla
-            if (giyimTipi == "alt") {
-                suggestion.AltGiyim = "";
-            }
-            if (giyimTipi == "ust") {
-                suggestion.UstGiyim = "";
-            }
-            if (giyimTipi == "ayakkabi") {
-                suggestion.Ayakkabi = "";
-            }
-            if (giyimTipi == "aksesuar") {
-                suggestion.Aksesuar = "";
-            }
-
-            // Veritabanından eşleşen ürünleri bul
-            var matchingProducts = await FindMatchingProductsAdvanced(suggestion);
-
-            Console.WriteLine("=== API ÇAĞRISI BAŞARILI ===");
-            var response = new
+            // Cinsiyet bilgisini de AI servisine gönder
+            if (_aiService is GeminiAIService geminiService)
             {
-                success = true,
-                suggestion.Style,
-                suggestion.UstGiyim,
-                suggestion.AltGiyim,
-                suggestion.Ayakkabi,
-                suggestion.Aksesuar,
-                suggestion.ColorScheme,
-                suggestion.Occasion,
-                products = matchingProducts
-            };
-            
-            Console.WriteLine($"Frontend'e gönderilen yanıt: {System.Text.Json.JsonSerializer.Serialize(response)}");
-            return Ok(response);
-        }
+                var suggestion = await geminiService.GetOutfitSuggestionAsync(imageDescription, preferences, productList, clothingType, gender);
+                Console.WriteLine($"AI yanıtı alındı: {suggestion.Style}");
+                
+                // Yüklenen kıyafet tipine göre öneri alanını sıfırla (çünkü kullanıcının zaten o kıyafeti var)
+                switch (clothingType.ToLower())
+                {
+                    case "ust":
+                        suggestion.UstGiyim = "";
+                        break;
+                    case "alt":
+                        suggestion.AltGiyim = "";
+                        break;
+                    case "ayakkabi":
+                        suggestion.Ayakkabi = "";
+                        break;
+                    case "aksesuar":
+                        suggestion.Aksesuar = "";
+                        break;
+                }
 
-        private Task<string> AnalyzeImage(IFormFile? image)
-        {
-            
-            if (image == null || image.Length == 0)
-            {
-                return Task.FromResult("kıyafet");
-            }
+                // Veritabanından eşleşen ürünleri bul
+                var matchingProducts = await FindMatchingProductsAdvanced(suggestion);
 
-            var fileName = image.FileName?.ToLower() ?? "";
-            var fileSize = image.Length;
-
-            // Dosya adı ve boyutuna göre basit tahminler
-            if (fileName.Contains("shirt") || fileName.Contains("gomlek") || fileName.Contains("tisort"))
-            {
-                return Task.FromResult("gömlek veya tişört");
-            }
-            else if (fileName.Contains("jean") || fileName.Contains("pantolon"))
-            {
-                return Task.FromResult("pantolon");
-            }
-            else if (fileName.Contains("dress") || fileName.Contains("elbise"))
-            {
-                return Task.FromResult("elbise");
-            }
-            else if (fileName.Contains("jacket") || fileName.Contains("ceket"))
-            {
-                return Task.FromResult("ceket");
-            }
-
-            // Dosya boyutuna göre tahmin (çok basit)
-            if (fileSize > 500000) // 500KB'dan büyükse
-            {
-                return Task.FromResult("üst giyim (detaylı)");
+                Console.WriteLine("=== API ÇAĞRISI BAŞARILI ===");
+                var response = new
+                {
+                    success = true,
+                    suggestion.Style,
+                    suggestion.UstGiyim,
+                    suggestion.AltGiyim,
+                    suggestion.Ayakkabi,
+                    suggestion.Aksesuar,
+                    suggestion.ColorScheme,
+                    suggestion.Occasion,
+                    uploadedClothingType = clothingType, // Frontend'e hangi tip kıyafet yüklendiğini bildir
+                    detectedGender = gender, // Frontend'e algılanan cinsiyeti bildir
+                    products = matchingProducts
+                };
+                Console.WriteLine("\n\nGeminiresponse: " + response);
+                Console.WriteLine($"Frontend'e gönderilen yanıt: {System.Text.Json.JsonSerializer.Serialize(response)}");
+                return Ok(response);
             }
             else
             {
-                return Task.FromResult("kıyafet parçası");
+                // Fallback: Eski method
+                var suggestion = await _aiService.GetOutfitSuggestionAsync(imageDescription, preferences, productList);
+                Console.WriteLine($"AI yanıtı alındı: {suggestion.Style}");
+
+                // Yüklenen kıyafet tipine göre öneri alanını sıfırla (çünkü kullanıcının zaten o kıyafeti var)
+                switch (clothingType.ToLower())
+                {
+                    case "ust":
+                        suggestion.UstGiyim = "";
+                        break;
+                    case "alt":
+                        suggestion.AltGiyim = "";
+                        break;
+                    case "ayakkabi":
+                        suggestion.Ayakkabi = "";
+                        break;
+                    case "aksesuar":
+                        suggestion.Aksesuar = "";
+                        break;
+                }
+
+                // Veritabanından eşleşen ürünleri bul
+                var matchingProducts = await FindMatchingProductsAdvanced(suggestion);
+
+                Console.WriteLine("=== API ÇAĞRISI BAŞARILI ===");
+                var response = new
+                {
+                    success = true,
+                    suggestion.Style,
+                    suggestion.UstGiyim,
+                    suggestion.AltGiyim,
+                    suggestion.Ayakkabi,
+                    suggestion.Aksesuar,
+                    suggestion.ColorScheme,
+                    suggestion.Occasion,
+                    uploadedClothingType = clothingType, // Frontend'e hangi tip kıyafet yüklendiğini bildir
+                    detectedGender = gender, // Frontend'e algılanan cinsiyeti bildir
+                    products = matchingProducts
+                };
+                Console.WriteLine("\n\nGeminiresponse: " + response);
+                Console.WriteLine($"Frontend'e gönderilen yanıt: {System.Text.Json.JsonSerializer.Serialize(response)}");
+                return Ok(response);
             }
         }
+
+
         
         private async Task<dynamic> FindMatchingProductsAdvanced(OutfitSuggestion suggestion)
         {
             // Her kategori için ayrı arama stratejileri
             var tasks = new List<Task<(string category, List<Product> products)>>();
+
+            // Üst giyim araması
+            if (!string.IsNullOrEmpty(suggestion.UstGiyim))
+            {
+                tasks.Add(SearchProductsWithCategory("ustGiyim", suggestion.UstGiyim, 
+                    new[] { "gömlek", "tisort", "ceket", "kazak"}));
+            }
 
             // Alt giyim araması
             if (!string.IsNullOrEmpty(suggestion.AltGiyim))
@@ -302,8 +316,13 @@ namespace deneme.Controllers
                     DetailUrl = $"/Product/Details/{p.Id}",
                     Similarity = CalculateSimilarity(category == "altGiyim" ? suggestion.AltGiyim : 
                                                    category == "ayakkabi" ? suggestion.Ayakkabi : 
+                                                   category == "ustGiyim" ? suggestion.UstGiyim :
+                                                   category == "aksesuar" ? suggestion.Aksesuar :
                                                    suggestion.Aksesuar, p.Name)
-                }).OrderByDescending(x => x.Similarity).ToArray();
+                })
+                .Where(x => x.Similarity > 0.6) // Sadece 0.6'dan büyük benzerlik oranına sahip ürünleri filtrele
+                .OrderByDescending(x => x.Similarity)
+                .ToArray();
             }
 
             return response;

@@ -32,12 +32,12 @@ builder.Services
 builder.Services.AddHttpClient<EmbeddingService>();
 
 // 5) Pinecone client
-builder.Services.AddSingleton(sp =>
-    new PineconeClient(builder.Configuration["Pinecone:ApiKey"]!)
-);
+// builder.Services.AddSingleton(sp =>
+//     new PineconeClient(builder.Configuration["Pinecone:ApiKey"]!)
+// );
 
 // 6) your indexing service
-builder.Services.AddScoped<IndexingService>();
+// builder.Services.AddScoped<IndexingService>();
 
 // Pinecone ve EmbeddingService'i OutfitSuggestionController için de kullanılabilir hale getir
 // (Muhtemelen zaten ekli ama emin olmak için)
@@ -72,11 +72,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // 8) Push to Pinecone
-using (var scope = app.Services.CreateScope())
-{
-    var indexer = scope.ServiceProvider.GetRequiredService<IndexingService>();
-    await indexer.UpsertAllProductsAsync();
-}
+// using (var scope = app.Services.CreateScope())
+// {
+//     var indexer = scope.ServiceProvider.GetRequiredService<IndexingService>();
+//     await indexer.UpsertAllProductsAsync();
+// }
 
 // ► Pipeline
 if (!app.Environment.IsDevelopment())
